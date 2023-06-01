@@ -1,28 +1,59 @@
-import { useFetch } from '@hooks/useFetch';
-import endPoints from '@services/api/index';
-import { Chart } from '@common/Chart';
-const Dashboard = () => {
-    const products = useFetch(endPoints.products.getProducts(7, 7));
-    const categoryNames = products?.map((product) => product.category);
-    const categoryCount = categoryNames?.map((category) => category.name);
-    const countOccurrences = (arr) => {
-        return arr.reduce((prev, curr) => {
-            return (prev[curr] = ++prev[curr] || 1), prev;
-        }, {});
-    };
-    const data = {
-        datasets: [
-            {
-                label: 'Categories',
-                data: countOccurrences(categoryCount),
-                borderWidth: 2,
-                backgroundColor: ['#ffbb11', '#c0c0c0', '#50AF95', '#f3baa2f', '#2a71d0'],
-            },
-        ],
+import React from 'react';
+import { CheckIcon, XCircleIcon } from '@heroicons/react/20/solid';
+import Modal from '@common/Modal';
+import FormProduct from '@components/FormProducts';
+import axios from 'axios';
+import endPoints from '@services/api';
+import { useAlert } from '@hooks/useAlert';
+import Alert from '@common/Alert';
+import { deleteProduct } from '@services/api/product';
+
+const Products = () => {
+    const [products, setProducts] = React.useState([]);
+    const [open, setOpen] = React.useState(false);
+    const { alert, setAlert, toggleAlert } = useAlert();
+    React.useEffect(() => {
+        async function loadProducts() {
+            const response = await axios.get(endPoints.products.allProducts);
+            setProducts(response.data);
+        }
+        try {
+            loadProducts();
+        } catch (e) {
+            console.error(e);
+        }
+    }, [alert]);
+
+    const handleDelete = (id) => {
+        deleteProduct(id).then(() => {
+            setAlert({
+                active: true,
+                message: 'Product Delete',
+                type: 'Delete',
+                autoClose: false,
+            });
+        });
     };
     return (
         <>
-            <Chart className="mb-8 mt-2" charData={data} />
+            <Alert alert={alert} handleClose={toggleAlert} />
+            <div className="lg:flex lg:items-center lg:justify-between mb-8">
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">List of Products</h2>
+                </div>
+                <div className="mt-5 flex lg:ml-4 lg:mt-0">
+                    <span className="sm:ml-3">
+                        <button
+                            type="button"
+                            onClick={() => setOpen(true)}
+                            className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                        >
+                            <CheckIcon className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
+                            Add Product
+                        </button>
+                    </span>
+                </div>
+            </div>
             <div className="flex flex-col">
                 <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
                     <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
@@ -76,9 +107,7 @@ const Dashboard = () => {
                                                 </a>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <a href="/edit" className="text-indigo-600 hover:text-indigo-900">
-                                                    Delete
-                                                </a>
+                                                <XCircleIcon onClick={() => handleDelete(product.id)} className="flex-shrink-0 h-6 w-6 text-gray-600 cursor-pointer" />
                                             </td>
                                         </tr>
                                     ))}
@@ -88,8 +117,11 @@ const Dashboard = () => {
                     </div>
                 </div>
             </div>
+            <Modal open={open} setOpen={setOpen}>
+                <FormProduct setAlert={setAlert} setOpen={setOpen} />
+            </Modal>
         </>
     );
 };
 
-export default Dashboard;
+export default Products;
